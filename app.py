@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-# Define Agent class with strength and health
 class BattleAgent(Agent):
     def __init__(self, unique_id, model, team, strength, health, move_distance):
         super().__init__(unique_id, model)
@@ -15,35 +14,34 @@ class BattleAgent(Agent):
         self.health = health
         self.move_distance = move_distance
         self.x, self.y = self.random_pos()
-
-    def random_pos(self):
-        """Randomize agent's position within the grid"""
-        return self.random.randrange(self.model.grid.width), self.random.randrange(self.model.grid.height)
+        self.model.grid.place_agent(self, (self.x, self.y))  # Ensure agent is placed on the grid
 
     def step(self):
         """Move agent within the allowed move distance and check for battles"""
         possible_moves = self.model.grid.get_neighborhood(
             (self.x, self.y), moore=True, include_center=False, radius=self.move_distance
         )
-        new_position = self.random.choice(possible_moves)
-        self.model.grid.move_agent(self, new_position)
+        if possible_moves:
+            new_position = self.random.choice(possible_moves)
+            self.model.grid.move_agent(self, new_position)  # Move only if valid moves exist
 
-        # Check for other agents at the new location
-        cellmates = self.model.grid.get_cell_list_contents([new_position])
-        for other in cellmates:
-            if other != self and other.team != self.team:
-                # Battle occurs if agents are from different teams
-                if self.strength > other.health:
-                    # Self wins
-                    self.strength += 1
-                    self.model.grid.remove_agent(other)
-                    self.model.schedule.remove(other)
-                elif other.strength > self.health:
-                    # Other wins
-                    other.strength += 1
-                    self.model.grid.remove_agent(self)
-                    self.model.schedule.remove(self)
-                    break
+            # Check for other agents at the new location
+            cellmates = self.model.grid.get_cell_list_contents([new_position])
+            for other in cellmates:
+                if other != self and other.team != self.team:
+                    # Battle logic
+                    if self.strength > other.health:
+                        if other.pos:
+                            self.model.grid.remove_agent(other)
+                            self.model.schedule.remove(other)
+                        self.strength += 1
+                    elif other.strength > self.health:
+                        if self.pos:
+                            self.model.grid.remove_agent(self)
+                            self.model.schedule.remove(self)
+                        other.strength += 1
+                        break
+
 
 # Define Model class
 class BattleModel(Model):
